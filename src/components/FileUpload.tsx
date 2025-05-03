@@ -2,10 +2,11 @@ import React from 'react';
 import { Box, Typography, Button } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { styled } from '@mui/material/styles';
+import { DropzoneOptions, DropzoneState } from 'react-dropzone';
 
 interface FileUploadProps {
-  getRootProps: any;
-  getInputProps: any;
+  getRootProps: DropzoneState['getRootProps'];
+  getInputProps: DropzoneState['getInputProps'];
   isDragActive: boolean;
   loading: boolean;
 }
