@@ -97,7 +97,6 @@ function App() {
       }
       const data = await response.json();
       setScanResults(data);
-      setTabValue(1); // Switch to Results tab
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -165,7 +164,7 @@ const classifyVulns = (vulns: Vulnerability[]) => {
   return (
     <Container maxWidth="lg">
       <Box sx={{ my: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center">
+        <Typography variant="h4" component="h1" gutterBottom align="center" color="primary">
           Code Vulnerability Scanner
         </Typography>
         <Typography variant="h6" component="h2" gutterBottom align="center" color="text.secondary">
@@ -223,22 +222,59 @@ const classifyVulns = (vulns: Vulnerability[]) => {
                       <Chip label={`Moderate: ${classified.MODERATE.length}`} color="warning" sx={{ mr: 1 }} />
                       <Chip label={`Info: ${classified.INFO.length}`} color="info" />
                     </Box>
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="subtitle1" color="text.secondary">
+                        Scanned File: {uploadedFile?.name}
+                      </Typography>
+                    </Box>
                     <Grid container spacing={2}>
                       {Object.entries(classified).map(([category, vulns]) => (
-                        <Grid item xs={12} md={4} key={category}>
-                          <Paper elevation={2} sx={{ p: 2, minHeight: 200 }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                              {category}
+                        <Grid item xs={12} key={category}>
+                          <Paper elevation={2} sx={{ p: 3, mb: 2 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, color: 
+                              category === 'VULNERABLE' ? 'error.main' : 
+                              category === 'MODERATE' ? 'warning.main' : 
+                              'info.main'
+                            }}>
+                              {category} Findings ({vulns.length})
                             </Typography>
                             {vulns.length === 0 ? (
-                              <Typography variant="body2" color="text.secondary">No findings</Typography>
+                              <Typography variant="body2" color="text.secondary">No findings in this category</Typography>
                             ) : (
                               vulns.map((vuln, idx) => (
-                                <Box key={idx} sx={{ mb: 1 }}>
-                                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{vuln.message}</Typography>
-                                  <Typography variant="caption" color="text.secondary">
-                                    {vuln.path} ({vuln.check_id})
+                                <Box key={idx} sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                                    {vuln.extra.message}
                                   </Typography>
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+                                    <Chip 
+                                      label={`File: ${vuln.path}`} 
+                                      size="small" 
+                                      color="default"
+                                    />
+                                    <Chip 
+                                      label={`Lines: ${vuln.start.line}-${vuln.end.line}`} 
+                                      size="small" 
+                                      color="default"
+                                    />
+                                    <Chip 
+                                      label={`Check ID: ${vuln.check_id}`} 
+                                      size="small" 
+                                      color="default"
+                                    />
+                                  </Box>
+                                  {vuln.extra.description && (
+                                    <Typography variant="body2" sx={{ mb: 1 }}>
+                                      {vuln.extra.description}
+                                    </Typography>
+                                  )}
+                                  {vuln.extra.recommendation && (
+                                    <Box sx={{ mt: 1, p: 1, bgcolor: 'success.light', borderRadius: 1 }}>
+                                      <Typography variant="body2" color="success.contrastText">
+                                        Recommendation: {vuln.extra.recommendation}
+                                      </Typography>
+                                    </Box>
+                                  )}
                                 </Box>
                               ))
                             )}
