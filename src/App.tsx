@@ -12,12 +12,18 @@ import {
   useTheme,
   useMediaQuery,
   Button,
-  Chip
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton
 } from '@mui/material';
 import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
 import FileUpload from './components/FileUpload';
 import ScanHistory from './components/ScanHistory';
+import CloseIcon from '@mui/icons-material/Close';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 interface Vulnerability {
   check_id: string;
@@ -67,6 +73,7 @@ function App() {
   const [tabValue, setTabValue] = useState(0);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [scanStarted, setScanStarted] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -153,12 +160,17 @@ const classifyVulns = (vulns: Vulnerability[]) => {
       }
       const data = await response.json();
       setScanResults(data);
-      setTabValue(0); // Switch to Upload tab (where results are now shown)
+      setDialogOpen(true);
     } catch (err) {
       setError('Failed to load scan details. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setScanResults(null);
   };
 
   return (
@@ -191,10 +203,16 @@ const classifyVulns = (vulns: Vulnerability[]) => {
               isDragActive={isDragActive}
               loading={loading}
             />
-            {uploadedFile && !scanStarted && (
+            {uploadedFile && (
               <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                <Button variant="contained" color="primary" size="large" onClick={startScan} disabled={loading}>
-                  SAST
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  size="large" 
+                  onClick={startScan} 
+                  disabled={loading}
+                >
+                  {loading ? 'Running SAST...' : 'SAST'}
                 </Button>
               </Box>
             )}
@@ -203,29 +221,56 @@ const classifyVulns = (vulns: Vulnerability[]) => {
                 {error}
               </Alert>
             )}
-            {loading && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                <CircularProgress />
+            {scanResults && !loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setDialogOpen(true)}
+                  startIcon={<VisibilityIcon />}
+                >
+                  View Results
+                </Button>
               </Box>
             )}
-            {scanResults && !loading && (
-              <Box sx={{ mt: 4 }}>
-                <Typography variant="h6" gutterBottom>
-                  Scan Results
-                </Typography>
-                {(() => {
-                  const classified = classifyVulns(scanResults.vulnerabilities || []);
-                  return <>
+          </TabPanel>
+          <TabPanel value={tabValue} index={1}>
+            <ScanHistory onViewScan={handleViewScan} />
+          </TabPanel>
+        </Paper>
+      </Box>
+      
+      {/* Add Dialog for scan results */}
+      <Dialog 
+        open={dialogOpen} 
+        onClose={handleCloseDialog}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">Scan Results</Typography>
+            <IconButton onClick={handleCloseDialog} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : scanResults && (
+            <Box sx={{ mt: 2 }}>
+              {(() => {
+                const classified = classifyVulns(scanResults.vulnerabilities || []);
+                return (
+                  <>
                     <Box sx={{ mb: 2 }}>
                       <Chip label={`Security Score: ${scanResults.security_score}/10`} color="primary" sx={{ mr: 2 }} />
                       <Chip label={`Vulnerable: ${classified.VULNERABLE.length}`} color="error" sx={{ mr: 1 }} />
                       <Chip label={`Moderate: ${classified.MODERATE.length}`} color="warning" sx={{ mr: 1 }} />
                       <Chip label={`Info: ${classified.INFO.length}`} color="info" />
-                    </Box>
-                    <Box sx={{ mb: 3 }}>
-                      <Typography variant="subtitle1" color="text.secondary">
-                        Scanned File: {uploadedFile?.name}
-                      </Typography>
                     </Box>
                     <Grid container spacing={2}>
                       {Object.entries(classified).map(([category, vulns]) => (
@@ -282,16 +327,13 @@ const classifyVulns = (vulns: Vulnerability[]) => {
                         </Grid>
                       ))}
                     </Grid>
-                  </>;
-                })()}
-              </Box>
-            )}
-          </TabPanel>
-          <TabPanel value={tabValue} index={1}>
-            <ScanHistory onViewScan={handleViewScan} />
-          </TabPanel>
-        </Paper>
-      </Box>
+                  </>
+                );
+              })()}
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 }
