@@ -11,11 +11,14 @@ import {
   Paper,
   Chip,
   IconButton,
-  TablePagination,
   Tooltip,
+  TablePagination
 } from '@mui/material';
 import { format } from 'date-fns';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import ErrorIcon from '@mui/icons-material/Error';
+import WarningIcon from '@mui/icons-material/Warning';
+import InfoIcon from '@mui/icons-material/Info';
 import axios from 'axios';
 
 interface ScanHistoryProps {
@@ -126,10 +129,31 @@ const ScanHistory: React.FC<ScanHistoryProps> = ({ onViewScan }) => {
                   />
                 </TableCell>
                 <TableCell>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
-                    {getSeverityChip(scan.severity_count.ERROR, 'ERROR')}
-                    {getSeverityChip(scan.severity_count.WARNING, 'WARNING')}
-                    {getSeverityChip(scan.severity_count.INFO, 'INFO')}
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Tooltip title={`${scan.severity_count.ERROR} High Risk`}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <ErrorIcon color="error" sx={{ fontSize: 20 }} />
+                        <Typography variant="body2" sx={{ ml: 0.5 }}>
+                          {scan.severity_count.ERROR}
+                        </Typography>
+                      </Box>
+                    </Tooltip>
+                    <Tooltip title={`${scan.severity_count.WARNING} Medium Risk`}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <WarningIcon color="warning" sx={{ fontSize: 20 }} />
+                        <Typography variant="body2" sx={{ ml: 0.5 }}>
+                          {scan.severity_count.WARNING}
+                        </Typography>
+                      </Box>
+                    </Tooltip>
+                    <Tooltip title={`${scan.severity_count.INFO} Low Risk`}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <InfoIcon color="info" sx={{ fontSize: 20 }} />
+                        <Typography variant="body2" sx={{ ml: 0.5 }}>
+                          {scan.severity_count.INFO}
+                        </Typography>
+                      </Box>
+                    </Tooltip>
                   </Box>
                 </TableCell>
                 <TableCell>

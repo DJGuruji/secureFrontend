@@ -17,7 +17,8 @@ import {
   DialogTitle,
   DialogContent,
   IconButton,
-  TextField
+  TextField,
+  LinearProgress
 } from '@mui/material';
 import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
@@ -27,6 +28,12 @@ import CloseIcon from '@mui/icons-material/Close';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ScanResults from './components/ScanResults';
 import { format } from 'date-fns';
+import WarningIcon from '@mui/icons-material/Warning';
+import ErrorIcon from '@mui/icons-material/Error';
+import InfoIcon from '@mui/icons-material/Info';
+import TimerIcon from '@mui/icons-material/Timer';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import SecurityIcon from '@mui/icons-material/Security';
 
 interface Vulnerability {
   check_id: string;
@@ -247,6 +254,34 @@ const classifyVulns = (vulns: Vulnerability[]) => {
     setDaptResults(null);
   };
 
+  // Update the calculateScore function to use stored score
+  const calculateScore = (results: any) => {
+    if (!results) return 0;
+    // Use the stored security score if available, otherwise calculate it
+    if (results.security_score !== undefined) {
+      return Math.round(results.security_score * 10) / 10;
+    }
+    
+    // Fallback calculation if security_score is not available
+    const severityCount = results.severity_count || {};
+    const total = (severityCount.ERROR || 0) + (severityCount.WARNING || 0) + (severityCount.INFO || 0);
+    if (total === 0) return 10;
+    
+    const weight = {
+      ERROR: 1,
+      WARNING: 0.5,
+      INFO: 0.1
+    };
+    
+    const weightedScore = 
+      (severityCount.ERROR || 0) * weight.ERROR +
+      (severityCount.WARNING || 0) * weight.WARNING +
+      (severityCount.INFO || 0) * weight.INFO;
+    
+    const score = Math.round((10 - (weightedScore / total) * 10) * 10) / 10;
+    return Math.max(0, Math.min(10, score));
+  };
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ my: 4 }}>
@@ -378,12 +413,82 @@ const classifyVulns = (vulns: Vulnerability[]) => {
         <DialogContent>
           {daptResults ? (
             <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Scan Summary
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+                <Box sx={{ position: 'relative', display: 'inline-flex', mr: 3 }}>
+                  <CircularProgress
+                    variant="determinate"
+                    value={calculateScore(daptResults) * 10}
+                    size={120}
+                    thickness={4}
+                    sx={{
+                      color: (theme) => {
+                        const score = calculateScore(daptResults);
+                        if (score >= 8) return theme.palette.success.main;
+                        if (score >= 6) return theme.palette.warning.main;
+                        return theme.palette.error.main;
+                      }
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      top: 0,
+                      left: 0,
+                      bottom: 0,
+                      right: 0,
+                      position: 'absolute',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Typography variant="h4" component="div" color="text.secondary">
+                      {calculateScore(daptResults)}/10
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box>
+                  <Typography variant="h6" gutterBottom>
+                    Security Score
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Based on vulnerability severity and count
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Grid container spacing={2} sx={{ mb: 4 }}>
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CalendarTodayIcon sx={{ mr: 1 }} />
+                      Scan Date
+                    </Typography>
+                    <Typography variant="body2">
+                      {new Date(daptResults.scan_metadata?.scan_date || Date.now()).toLocaleString()}
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                      <TimerIcon sx={{ mr: 1 }} />
+                      Processing Duration
+                    </Typography>
+                    <Typography variant="body2">
+                      {daptResults.scan_metadata?.scan_duration || 0} seconds
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                <SecurityIcon sx={{ mr: 1 }} />
+                Vulnerability Summary
               </Typography>
               <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={6} sm={3}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
+                    <ErrorIcon color="error" sx={{ fontSize: 40, mb: 1 }} />
                     <Typography variant="h4" color="error">
                       {daptResults.severity_count.ERROR || 0}
                     </Typography>
@@ -392,6 +497,7 @@ const classifyVulns = (vulns: Vulnerability[]) => {
                 </Grid>
                 <Grid item xs={6} sm={3}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
+                    <WarningIcon color="warning" sx={{ fontSize: 40, mb: 1 }} />
                     <Typography variant="h4" color="warning.main">
                       {daptResults.severity_count.WARNING || 0}
                     </Typography>
@@ -400,6 +506,7 @@ const classifyVulns = (vulns: Vulnerability[]) => {
                 </Grid>
                 <Grid item xs={6} sm={3}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
+                    <InfoIcon color="info" sx={{ fontSize: 40, mb: 1 }} />
                     <Typography variant="h4" color="info.main">
                       {daptResults.severity_count.INFO || 0}
                     </Typography>
@@ -409,13 +516,22 @@ const classifyVulns = (vulns: Vulnerability[]) => {
               </Grid>
 
               <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-                Findings
+                Detailed Findings
               </Typography>
               {daptResults.vulnerabilities.map((vuln, index) => (
                 <Paper key={index} sx={{ p: 2, mb: 2 }}>
-                  <Typography variant="subtitle1" color={vuln.extra.severity === 'ERROR' ? 'error' : vuln.extra.severity === 'WARNING' ? 'warning.main' : 'info.main'}>
-                    {vuln.extra.message} ({vuln.extra.severity})
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    {vuln.extra.severity === 'ERROR' ? (
+                      <ErrorIcon color="error" sx={{ mr: 1 }} />
+                    ) : vuln.extra.severity === 'WARNING' ? (
+                      <WarningIcon color="warning" sx={{ mr: 1 }} />
+                    ) : (
+                      <InfoIcon color="info" sx={{ mr: 1 }} />
+                    )}
+                    <Typography variant="subtitle1" color={vuln.extra.severity === 'ERROR' ? 'error' : vuln.extra.severity === 'WARNING' ? 'warning.main' : 'info.main'}>
+                      {vuln.extra.message}
+                    </Typography>
+                  </Box>
                   <Typography variant="body2" sx={{ mt: 1 }}>
                     {vuln.extra.description}
                   </Typography>
@@ -455,12 +571,82 @@ const classifyVulns = (vulns: Vulnerability[]) => {
             </Box>
           ) : scanResults ? (
             <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Scan Summary
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+                <Box sx={{ position: 'relative', display: 'inline-flex', mr: 3 }}>
+                  <CircularProgress
+                    variant="determinate"
+                    value={calculateScore(scanResults) * 10}
+                    size={120}
+                    thickness={4}
+                    sx={{
+                      color: (theme) => {
+                        const score = calculateScore(scanResults);
+                        if (score >= 8) return theme.palette.success.main;
+                        if (score >= 6) return theme.palette.warning.main;
+                        return theme.palette.error.main;
+                      }
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      top: 0,
+                      left: 0,
+                      bottom: 0,
+                      right: 0,
+                      position: 'absolute',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Typography variant="h4" component="div" color="text.secondary">
+                      {calculateScore(scanResults)}/10
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box>
+                  <Typography variant="h6" gutterBottom>
+                    Security Score
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Based on vulnerability severity and count
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Grid container spacing={2} sx={{ mb: 4 }}>
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CalendarTodayIcon sx={{ mr: 1 }} />
+                      Scan Date
+                    </Typography>
+                    <Typography variant="body2">
+                      {new Date(scanResults.scan_metadata?.scan_date || Date.now()).toLocaleString()}
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                      <TimerIcon sx={{ mr: 1 }} />
+                      Processing Duration
+                    </Typography>
+                    <Typography variant="body2">
+                      {scanResults.scan_metadata?.scan_duration || 0} seconds
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                <SecurityIcon sx={{ mr: 1 }} />
+                Vulnerability Summary
               </Typography>
               <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={6} sm={3}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
+                    <ErrorIcon color="error" sx={{ fontSize: 40, mb: 1 }} />
                     <Typography variant="h4" color="error">
                       {scanResults.severity_count.ERROR || 0}
                     </Typography>
@@ -469,6 +655,7 @@ const classifyVulns = (vulns: Vulnerability[]) => {
                 </Grid>
                 <Grid item xs={6} sm={3}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
+                    <WarningIcon color="warning" sx={{ fontSize: 40, mb: 1 }} />
                     <Typography variant="h4" color="warning.main">
                       {scanResults.severity_count.WARNING || 0}
                     </Typography>
@@ -477,6 +664,7 @@ const classifyVulns = (vulns: Vulnerability[]) => {
                 </Grid>
                 <Grid item xs={6} sm={3}>
                   <Paper sx={{ p: 2, textAlign: 'center' }}>
+                    <InfoIcon color="info" sx={{ fontSize: 40, mb: 1 }} />
                     <Typography variant="h4" color="info.main">
                       {scanResults.severity_count.INFO || 0}
                     </Typography>
@@ -486,13 +674,22 @@ const classifyVulns = (vulns: Vulnerability[]) => {
               </Grid>
 
               <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-                Findings
+                Detailed Findings
               </Typography>
               {scanResults.vulnerabilities.map((vuln, index) => (
                 <Paper key={index} sx={{ p: 2, mb: 2 }}>
-                  <Typography variant="subtitle1" color={vuln.extra.severity === 'ERROR' ? 'error' : vuln.extra.severity === 'WARNING' ? 'warning.main' : 'info.main'}>
-                    {vuln.extra.message} ({vuln.extra.severity})
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    {vuln.extra.severity === 'ERROR' ? (
+                      <ErrorIcon color="error" sx={{ mr: 1 }} />
+                    ) : vuln.extra.severity === 'WARNING' ? (
+                      <WarningIcon color="warning" sx={{ mr: 1 }} />
+                    ) : (
+                      <InfoIcon color="info" sx={{ mr: 1 }} />
+                    )}
+                    <Typography variant="subtitle1" color={vuln.extra.severity === 'ERROR' ? 'error' : vuln.extra.severity === 'WARNING' ? 'warning.main' : 'info.main'}>
+                      {vuln.extra.message}
+                    </Typography>
+                  </Box>
                   <Typography variant="body2" sx={{ mt: 1 }}>
                     {vuln.path}:{vuln.start.line}-{vuln.end.line}
                   </Typography>
