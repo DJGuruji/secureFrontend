@@ -24,6 +24,8 @@ import FileUpload from './components/FileUpload';
 import ScanHistory from './components/ScanHistory';
 import CloseIcon from '@mui/icons-material/Close';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import ScanResults from './components/ScanResults';
+import { format } from 'date-fns';
 
 interface Vulnerability {
   check_id: string;
@@ -126,6 +128,9 @@ function App() {
       'application/x-ruby': ['.rb'],
       'text/x-go': ['.go'],
       'text/x-rust': ['.rs'],
+      'text/plain': ['.txt'],
+      'application/x-msdownload': ['.exe'],
+      'application/x-sh': ['.sh'],
     },
     multiple: false,
   });
@@ -228,6 +233,7 @@ const classifyVulns = (vulns: Vulnerability[]) => {
                   color="primary"
                   onClick={() => setDialogOpen(true)}
                   startIcon={<VisibilityIcon />}
+                  
                 >
                   View Results
                 </Button>
@@ -261,76 +267,7 @@ const classifyVulns = (vulns: Vulnerability[]) => {
               <CircularProgress />
             </Box>
           ) : scanResults && (
-            <Box sx={{ mt: 2 }}>
-              {(() => {
-                const classified = classifyVulns(scanResults.vulnerabilities || []);
-                return (
-                  <>
-                    <Box sx={{ mb: 2 }}>
-                      <Chip label={`Security Score: ${scanResults.security_score}/10`} color="primary" sx={{ mr: 2 }} />
-                      <Chip label={`Vulnerable: ${classified.VULNERABLE.length}`} color="error" sx={{ mr: 1 }} />
-                      <Chip label={`Moderate: ${classified.MODERATE.length}`} color="warning" sx={{ mr: 1 }} />
-                      <Chip label={`Info: ${classified.INFO.length}`} color="info" />
-                    </Box>
-                    <Grid container spacing={2}>
-                      {Object.entries(classified).map(([category, vulns]) => (
-                        <Grid item xs={12} key={category}>
-                          <Paper elevation={2} sx={{ p: 3, mb: 2 }}>
-                            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, color: 
-                              category === 'VULNERABLE' ? 'error.main' : 
-                              category === 'MODERATE' ? 'warning.main' : 
-                              'info.main'
-                            }}>
-                              {category} Findings ({vulns.length})
-                            </Typography>
-                            {vulns.length === 0 ? (
-                              <Typography variant="body2" color="text.secondary">No findings in this category</Typography>
-                            ) : (
-                              vulns.map((vuln, idx) => (
-                                <Box key={idx} sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-                                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                                    {vuln.extra.message}
-                                  </Typography>
-                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
-                                    <Chip 
-                                      label={`File: ${vuln.path}`} 
-                                      size="small" 
-                                      color="default"
-                                    />
-                                    <Chip 
-                                      label={`Lines: ${vuln.start.line}-${vuln.end.line}`} 
-                                      size="small" 
-                                      color="default"
-                                    />
-                                    <Chip 
-                                      label={`Check ID: ${vuln.check_id}`} 
-                                      size="small" 
-                                      color="default"
-                                    />
-                                  </Box>
-                                  {vuln.extra.description && (
-                                    <Typography variant="body2" sx={{ mb: 1 }}>
-                                      {vuln.extra.description}
-                                    </Typography>
-                                  )}
-                                  {vuln.extra.recommendation && (
-                                    <Box sx={{ mt: 1, p: 1, bgcolor: 'success.light', borderRadius: 1 }}>
-                                      <Typography variant="body2" color="success.contrastText">
-                                        Recommendation: {vuln.extra.recommendation}
-                                      </Typography>
-                                    </Box>
-                                  )}
-                                </Box>
-                              ))
-                            )}
-                          </Paper>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  </>
-                );
-              })()}
-            </Box>
+            <ScanResults results={scanResults} />
           )}
         </DialogContent>
       </Dialog>
